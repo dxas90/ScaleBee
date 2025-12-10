@@ -12,7 +12,7 @@ configs:
 services:
 
   scalebee:
-    image: ghcr.io/dxas90/scalebee:v0.0.1@sha256:19bbe105f1ec82f3499ade26f995d025f1abd55966c40ea00bebb6fb019c2434
+    image: ghcr.io/dxas90/scalebee:v0.0.2@sha256:6e69ef0ce33b5f1f365683ca4f7a7d983794d76dddecf6cadba7b3287ff0ba3b
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
