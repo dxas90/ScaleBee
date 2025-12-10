@@ -49,7 +49,7 @@ func NewClient(baseURL string) *Client {
 // WaitForPrometheus waits for Prometheus to be ready with exponential backoff
 func (c *Client) WaitForPrometheus(ctx context.Context, maxRetries int) error {
 	log.Printf("Waiting for Prometheus at %s to be ready...", c.baseURL)
-	
+
 	for attempt := 1; attempt <= maxRetries; attempt++ {
 		// Try to query Prometheus
 		req, err := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("%s/-/ready", c.baseURL), nil)
@@ -63,12 +63,12 @@ func (c *Client) WaitForPrometheus(ctx context.Context, maxRetries int) error {
 				}
 			}
 		}
-		
+
 		if attempt < maxRetries {
 			// Exponential backoff: 2, 4, 8, 16, 32 seconds (max 32s)
 			waitTime := time.Duration(min(1<<uint(attempt), 32)) * time.Second
 			log.Printf("Prometheus not ready (attempt %d/%d), retrying in %v...", attempt, maxRetries, waitTime)
-			
+
 			select {
 			case <-ctx.Done():
 				return ctx.Err()
@@ -76,7 +76,7 @@ func (c *Client) WaitForPrometheus(ctx context.Context, maxRetries int) error {
 			}
 		}
 	}
-	
+
 	return fmt.Errorf("prometheus did not become ready after %d attempts", maxRetries)
 }
 
