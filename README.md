@@ -95,11 +95,18 @@ ScaleBee is configured through environment variables:
 |----------|---------|-------------|
 | `PROMETHEUS_URL` | `http://prometheus:9090` | URL of the Prometheus server |
 | `LOOP` | `yes` | Enable continuous monitoring (`yes` or `no`) |
-| `INTERVAL_SECONDS` | `60` | Seconds between autoscaling checks |
-| `CPU_PERCENTAGE_UPPER_LIMIT` | `85` | CPU % threshold for scaling up |
-| `CPU_PERCENTAGE_LOWER_LIMIT` | `25` | CPU % threshold for scaling down |
+| `INTERVAL_SECONDS` | `15` | Seconds between autoscaling checks |
+| `CPU_PERCENTAGE_UPPER_LIMIT` | `75` | CPU % threshold for scaling up |
+| `CPU_PERCENTAGE_LOWER_LIMIT` | `20` | CPU % threshold for scaling down |
+| `MEMORY_PERCENTAGE_UPPER_LIMIT` | `80` | Memory % threshold for scaling up |
+| `MEMORY_PERCENTAGE_LOWER_LIMIT` | `20` | Memory % threshold for scaling down |
 | `METRICS_ENABLED` | `yes` | Enable built-in metrics exporter |
 | `METRICS_PORT` | `9090` | Port for metrics HTTP server |
+
+**Scaling Logic:**
+
+- **Scale up** when **either** CPU **or** Memory exceeds their upper limits
+- **Scale down** when **both** CPU **and** Memory are below their lower limits
 
 ### Service Labels
 

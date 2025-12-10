@@ -1,18 +1,22 @@
 # ScaleBee - AI Agent Instructions
 
 ## Project Overview
-ScaleBee is a Docker Swarm autoscaler that collects container metrics directly from Docker and exposes them to Prometheus, enabling CPU-based autoscaling decisions. Originally migrated from bash to Go.
+ScaleBee is a Docker Swarm autoscaler that collects container metrics directly from Docker and exposes them to Prometheus, enabling CPU and memory-based autoscaling decisions. Originally migrated from bash to Go.
 
 ## Architecture (3 Components)
 
 1. **Metrics Exporter** (`pkg/metrics/exporter.go`)
    - Polls Docker socket every 10s for container stats via `ContainerStats()` API
    - Exposes Prometheus metrics on `:9090/metrics` with labels: `service`, `task`, `container_id`
+   - Exports: `container_cpu_usage_percent`, `container_memory_usage_mb`, `container_memory_limit_mb`
    - Critical: Runs as root to access `/var/run/docker.sock` (Colima/dev requirement)
 
 2. **Autoscaler Engine** (`pkg/autoscaler/autoscaler.go`)
-   - Queries Prometheus: `avg(container_cpu_usage_percent) BY (service)`
-   - Scale-up: CPU > 85%, Scale-down: CPU < 25% (configurable via env vars)
+   - Queries Prometheus for CPU: `avg(container_cpu_usage_percent) BY (service)`
+   - Queries Prometheus for Memory: `(avg(container_memory_usage_mb) BY (service) / avg(container_memory_limit_mb) BY (service)) * 100`
+   - Scale-up: CPU > 85% OR Memory > 85% (either threshold triggers scale-up)
+   - Scale-down: CPU < 25% AND Memory < 25% (both must be below threshold)
+   - Configurable thresholds via env vars
    - Only affects services with label `swarm.autoscaler=true`
 
 3. **Docker Service Manager** (`pkg/docker/service.go`)
@@ -67,6 +71,7 @@ All config via `getEnv()`, `getEnvInt()`, `getEnvFloat()` helpers in `main.go`:
 ```go
 prometheusURL := getEnv("PROMETHEUS_URL", "http://prometheus:9090")
 cpuLimit := getEnvFloat("CPU_PERCENTAGE_UPPER_LIMIT", 85.0)
+memoryLimit := getEnvFloat("MEMORY_PERCENTAGE_UPPER_LIMIT", 85.0)
 ```
 
 ### Error Handling
@@ -102,6 +107,6 @@ deploy/
 ```
 
 ## Reference Implementation
-- Original bash script: `old/auto-scale.sh`
+
 - Migration notes: `MIGRATION.md`
 - Inspired by: github.com/jcwimer/docker-swarm-autoscaler

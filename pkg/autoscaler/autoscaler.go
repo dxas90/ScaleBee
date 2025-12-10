@@ -11,16 +11,22 @@ import (
 
 const (
 	// CPUUpperLimit is the CPU percentage threshold for scaling up
-	CPUUpperLimit = 85.0
+	CPUUpperLimit = 75.0
 	// CPULowerLimit is the CPU percentage threshold for scaling down
-	CPULowerLimit = 25.0
+	CPULowerLimit = 20.0
+	// MemoryUpperLimit is the memory percentage threshold for scaling up
+	MemoryUpperLimit = 80.0
+	// MemoryLowerLimit is the memory percentage threshold for scaling down
+	MemoryLowerLimit = 20.0
 )
 
 // Config holds the autoscaler configuration
 type Config struct {
-	PrometheusURL string
-	CPUUpperLimit float64
-	CPULowerLimit float64
+	PrometheusURL    string
+	CPUUpperLimit    float64
+	CPULowerLimit    float64
+	MemoryUpperLimit float64
+	MemoryLowerLimit float64
 }
 
 // Autoscaler manages the autoscaling logic
@@ -37,6 +43,12 @@ func NewAutoscaler(config *Config) (*Autoscaler, error) {
 	}
 	if config.CPULowerLimit == 0 {
 		config.CPULowerLimit = CPULowerLimit
+	}
+	if config.MemoryUpperLimit == 0 {
+		config.MemoryUpperLimit = MemoryUpperLimit
+	}
+	if config.MemoryLowerLimit == 0 {
+		config.MemoryLowerLimit = MemoryLowerLimit
 	}
 
 	promClient := prometheus.NewClient(config.PrometheusURL)
@@ -60,22 +72,23 @@ func (a *Autoscaler) Close() error {
 
 // Run executes one iteration of the autoscaling loop
 func (a *Autoscaler) Run(ctx context.Context) error {
-	// Get metrics from Prometheus
-	metrics, err := a.promClient.GetServiceCPUMetrics(ctx)
+	// Get both CPU and memory metrics concurrently for faster response
+	cpuMetrics, memoryMetrics, err := a.promClient.GetServiceMetrics(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to get metrics: %w", err)
+		log.Printf("Error: failed to get metrics: %v", err)
+		return nil
 	}
 
-	log.Printf("Retrieved %d service metrics from Prometheus", len(metrics))
+	log.Printf("Retrieved %d service CPU metrics from Prometheus", len(cpuMetrics))
 
-	// Group metrics by service name (aggregate multiple instances)
-	serviceMetrics := make(map[string][]float64)
-	for _, m := range metrics {
-		serviceMetrics[m.ServiceName] = append(serviceMetrics[m.ServiceName], m.CPUPercent)
+	// Group CPU metrics by service name (aggregate multiple instances)
+	serviceCPUMetrics := make(map[string][]float64)
+	for _, m := range cpuMetrics {
+		serviceCPUMetrics[m.ServiceName] = append(serviceCPUMetrics[m.ServiceName], m.CPUPercent)
 	}
 
 	// Process each service
-	for serviceName, cpuValues := range serviceMetrics {
+	for serviceName, cpuValues := range serviceCPUMetrics {
 		// Calculate average CPU
 		var totalCPU float64
 		for _, cpu := range cpuValues {
@@ -83,7 +96,10 @@ func (a *Autoscaler) Run(ctx context.Context) error {
 		}
 		avgCPU := totalCPU / float64(len(cpuValues))
 
-		log.Printf("Service: %s, Avg CPU: %.2f%%", serviceName, avgCPU)
+		// Get memory percentage for this service
+		avgMemory := memoryMetrics[serviceName]
+
+		log.Printf("Service: %s, Avg CPU: %.2f%%, Avg Memory: %.2f%%", serviceName, avgCPU, avgMemory)
 
 		// Get service configuration
 		config, err := a.serviceManager.GetServiceConfig(ctx, serviceName)
@@ -104,14 +120,37 @@ func (a *Autoscaler) Run(ctx context.Context) error {
 			log.Printf("Error during default scale for %s: %v", serviceName, err)
 		}
 
-		// Check if we need to scale based on CPU
+		// Check if we need to scale based on CPU or Memory
+		// Scale up if EITHER CPU or Memory exceeds upper threshold
+		shouldScaleUp := false
+		scaleUpReason := ""
+
 		if avgCPU > a.config.CPUUpperLimit {
-			log.Printf("Service %s is above %.0f%% CPU usage", serviceName, a.config.CPUUpperLimit)
+			shouldScaleUp = true
+			scaleUpReason = fmt.Sprintf("CPU %.2f%% > %.0f%%", avgCPU, a.config.CPUUpperLimit)
+		}
+
+		if avgMemory > a.config.MemoryUpperLimit {
+			shouldScaleUp = true
+			if scaleUpReason != "" {
+				scaleUpReason += fmt.Sprintf(" and Memory %.2f%% > %.0f%%", avgMemory, a.config.MemoryUpperLimit)
+			} else {
+				scaleUpReason = fmt.Sprintf("Memory %.2f%% > %.0f%%", avgMemory, a.config.MemoryUpperLimit)
+			}
+		}
+
+		if shouldScaleUp {
+			log.Printf("Service %s is above threshold: %s", serviceName, scaleUpReason)
 			if err := a.scaleUp(ctx, serviceName); err != nil {
 				log.Printf("Error scaling up %s: %v", serviceName, err)
 			}
-		} else if avgCPU < a.config.CPULowerLimit {
-			log.Printf("Service %s is below %.0f%% CPU usage", serviceName, a.config.CPULowerLimit)
+			continue // Don't check scale down if we're scaling up
+		}
+
+		// Scale down only if BOTH CPU and Memory are below lower threshold
+		if avgCPU < a.config.CPULowerLimit && avgMemory < a.config.MemoryLowerLimit {
+			log.Printf("Service %s is below threshold: CPU %.2f%% < %.0f%% and Memory %.2f%% < %.0f%%",
+				serviceName, avgCPU, a.config.CPULowerLimit, avgMemory, a.config.MemoryLowerLimit)
 			if err := a.scaleDown(ctx, serviceName); err != nil {
 				log.Printf("Error scaling down %s: %v", serviceName, err)
 			}

@@ -18,7 +18,7 @@ func main() {
 	// Get configuration from environment variables
 	prometheusURL := getEnv("PROMETHEUS_URL", "http://prometheus:9090")
 	loopEnabled := getEnv("LOOP", "yes") == "yes"
-	intervalSeconds := getEnvInt("INTERVAL_SECONDS", 60)
+	intervalSeconds := getEnvInt("INTERVAL_SECONDS", 15)
 	metricsPort := getEnv("METRICS_PORT", "9090")
 	metricsEnabled := getEnv("METRICS_ENABLED", "yes") == "yes"
 
@@ -90,9 +90,11 @@ func main() {
 
 	// Create autoscaler
 	config := &autoscaler.Config{
-		PrometheusURL: prometheusURL,
-		CPUUpperLimit: getEnvFloat("CPU_PERCENTAGE_UPPER_LIMIT", 85.0),
-		CPULowerLimit: getEnvFloat("CPU_PERCENTAGE_LOWER_LIMIT", 25.0),
+		PrometheusURL:    prometheusURL,
+		CPUUpperLimit:    getEnvFloat("CPU_PERCENTAGE_UPPER_LIMIT", 75.0),
+		CPULowerLimit:    getEnvFloat("CPU_PERCENTAGE_LOWER_LIMIT", 20.0),
+		MemoryUpperLimit: getEnvFloat("MEMORY_PERCENTAGE_UPPER_LIMIT", 80.0),
+		MemoryLowerLimit: getEnvFloat("MEMORY_PERCENTAGE_LOWER_LIMIT", 20.0),
 	}
 
 	scaler, err := autoscaler.NewAutoscaler(config)
@@ -103,6 +105,8 @@ func main() {
 
 	log.Printf("CPU Upper Limit: %.0f%%", config.CPUUpperLimit)
 	log.Printf("CPU Lower Limit: %.0f%%", config.CPULowerLimit)
+	log.Printf("Memory Upper Limit: %.0f%%", config.MemoryUpperLimit)
+	log.Printf("Memory Lower Limit: %.0f%%", config.MemoryLowerLimit)
 
 	// Run the autoscaler
 	log.Println("Starting autoscaler...")
