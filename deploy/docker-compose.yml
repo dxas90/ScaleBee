@@ -15,16 +15,16 @@ services:
     image: ghcr.io/dxas90/scalebee:v0.0.2@sha256:6e69ef0ce33b5f1f365683ca4f7a7d983794d76dddecf6cadba7b3287ff0ba3b
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-    environment:
-      - PROMETHEUS_URL=http://prometheus:9090
-      - LOOP=yes
-      - INTERVAL_SECONDS=13
-      - CPU_PERCENTAGE_UPPER_LIMIT=75
-      - CPU_PERCENTAGE_LOWER_LIMIT=20
-      - MEMORY_PERCENTAGE_UPPER_LIMIT=80
-      - MEMORY_PERCENTAGE_LOWER_LIMIT=20
-      - METRICS_ENABLED=yes
-      - METRICS_PORT=9090
+    # environment:  # default values shown, uncomment to override
+    #   - PROMETHEUS_URL=http://prometheus:9090
+    #   - LOOP=yes
+    #   - INTERVAL_SECONDS=13
+    #   - CPU_PERCENTAGE_UPPER_LIMIT=75
+    #   - CPU_PERCENTAGE_LOWER_LIMIT=20
+    #   - MEMORY_PERCENTAGE_UPPER_LIMIT=80
+    #   - MEMORY_PERCENTAGE_LOWER_LIMIT=20
+    #   - METRICS_ENABLED=yes
+    #   - METRICS_PORT=9090
     networks:
       - autoscale
     deploy:
