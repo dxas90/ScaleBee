@@ -18,7 +18,7 @@ func main() {
 	// Get configuration from environment variables
 	prometheusURL := getEnv("PROMETHEUS_URL", "http://prometheus:9090")
 	loopEnabled := getEnv("LOOP", "yes") == "yes"
-	intervalSeconds := getEnvInt("INTERVAL_SECONDS", 15)
+	intervalSeconds := getEnvInt("INTERVAL_SECONDS", 13)
 	metricsPort := getEnv("METRICS_PORT", "9090")
 	metricsEnabled := getEnv("METRICS_ENABLED", "yes") == "yes"
 
@@ -102,6 +102,11 @@ func main() {
 		log.Fatalf("Failed to create autoscaler: %v", err)
 	}
 	defer scaler.Close()
+
+	// Wait for Prometheus to be ready (up to 10 retries with exponential backoff)
+	if err := scaler.PrometheusClient().WaitForPrometheus(ctx, 10); err != nil {
+		log.Fatalf("Failed to connect to Prometheus: %v", err)
+	}
 
 	log.Printf("CPU Upper Limit: %.0f%%", config.CPUUpperLimit)
 	log.Printf("CPU Lower Limit: %.0f%%", config.CPULowerLimit)

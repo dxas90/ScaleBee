@@ -65,9 +65,14 @@ func NewAutoscaler(config *Config) (*Autoscaler, error) {
 	}, nil
 }
 
-// Close cleans up resources
+// Close releases resources used by the autoscaler
 func (a *Autoscaler) Close() error {
 	return a.serviceManager.Close()
+}
+
+// PrometheusClient returns the Prometheus client for direct access
+func (a *Autoscaler) PrometheusClient() *prometheus.Client {
+	return a.promClient
 }
 
 // Run executes one iteration of the autoscaling loop

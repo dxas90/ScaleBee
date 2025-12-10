@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"strconv"
 	"sync"
+	"time"
 )
 
 // Client represents a Prometheus API client
@@ -40,8 +42,49 @@ type prometheusResponse struct {
 func NewClient(baseURL string) *Client {
 	return &Client{
 		baseURL: baseURL,
-		client:  &http.Client{},
+		client:  &http.Client{Timeout: 10 * time.Second},
 	}
+}
+
+// WaitForPrometheus waits for Prometheus to be ready with exponential backoff
+func (c *Client) WaitForPrometheus(ctx context.Context, maxRetries int) error {
+	log.Printf("Waiting for Prometheus at %s to be ready...", c.baseURL)
+	
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		// Try to query Prometheus
+		req, err := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("%s/-/ready", c.baseURL), nil)
+		if err == nil {
+			resp, err := c.client.Do(req)
+			if err == nil {
+				resp.Body.Close()
+				if resp.StatusCode == http.StatusOK {
+					log.Printf("Prometheus is ready")
+					return nil
+				}
+			}
+		}
+		
+		if attempt < maxRetries {
+			// Exponential backoff: 2, 4, 8, 16, 32 seconds (max 32s)
+			waitTime := time.Duration(min(1<<uint(attempt), 32)) * time.Second
+			log.Printf("Prometheus not ready (attempt %d/%d), retrying in %v...", attempt, maxRetries, waitTime)
+			
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-time.After(waitTime):
+			}
+		}
+	}
+	
+	return fmt.Errorf("prometheus did not become ready after %d attempts", maxRetries)
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 // GetServiceCPUMetrics queries Prometheus for CPU metrics of Docker Swarm services
