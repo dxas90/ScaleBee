@@ -1,0 +1,27 @@
+groups:
+- name: autoscaling
+  rules:
+
+  - alert: HighCPUUsage
+    expr: rate(container_cpu_usage_seconds_total[2m]) * 100 > 75
+    for: 2m
+    labels:
+      severity: warning
+    annotations:
+      description: "CPU usage above 75% for 2 minutes"
+
+  - alert: HighMemoryUsage
+    expr: (container_memory_usage_bytes / container_memory_limit_bytes) > 0.80
+    for: 2m
+    labels:
+      severity: warning
+    annotations:
+      description: "Memory usage above 80% for 2 minutes"
+
+  - alert: LowCPUUsage
+    expr: rate(container_cpu_usage_seconds_total[5m]) * 100 < 20
+    for: 5m
+    labels:
+      severity: info
+    annotations:
+      description: "CPU usage below 20% for 5 minutes"

@@ -1,0 +1,32 @@
+services:
+  # Test service for autoscaler - uses stress tool for controlled CPU load
+  testapp:
+    image: alpine:latest
+    command: sh -c "while true; do sleep 30; done"
+    networks:
+      - autoscale
+    deploy:
+      labels:
+        # Enable autoscaling for this service
+        - "swarm.autoscaler=true"
+        # Minimum 1 replica (easier to test scale-up from 1->2)
+        - "swarm.autoscaler.minimum=1"
+        # Maximum 5 replicas
+        - "swarm.autoscaler.maximum=5"
+      mode: replicated
+      replicas: 1
+      resources:
+        limits:
+          # No CPU limits - let it use as much as needed for testing
+          memory: 128M
+        reservations:
+          memory: 64M
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+
+networks:
+  autoscale:
+    external: true
+    name: autoscale_autoscale

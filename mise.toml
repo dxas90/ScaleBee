@@ -1,0 +1,16 @@
+[tools]
+age = "latest"
+flux2 = "latest"
+kubectl = "latest"
+sops = "latest"
+task = "latest"
+uv = "latest"
+
+[settings]
+experimental = true
+
+[env]
+# Use the project name derived from the current directory
+LC_ALL = "en_US.UTF-8"
+LC_CTYPE = "en_US.UTF-8"
+

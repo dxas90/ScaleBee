@@ -1,0 +1,53 @@
+version: "3.7"
+
+networks:
+  autoscale:
+
+configs:
+  prometheus_config:
+    file: ./prometheus.yml
+  prometheus_rules:
+    file: ./alert-rules.yml
+
+services:
+
+  scalebee:
+    image: scalebee:latest
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      - PROMETHEUS_URL=http://prometheus:9090
+      - LOOP=yes
+      - INTERVAL_SECONDS=13
+      - CPU_PERCENTAGE_UPPER_LIMIT=75
+      - CPU_PERCENTAGE_LOWER_LIMIT=20
+      - METRICS_ENABLED=yes
+      - METRICS_PORT=9090
+    networks:
+      - autoscale
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+
+  prometheus:
+    image: prom/prometheus:v2.12.0
+    networks:
+      - autoscale
+    command:
+      - "--storage.tsdb.retention.size=1GB"
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--web.enable-lifecycle"
+    configs:
+       - source: prometheus_config
+         target: /etc/prometheus/prometheus.yml
+       - source: prometheus_rules
+         target: /etc/prometheus/alert-rules.yml
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
