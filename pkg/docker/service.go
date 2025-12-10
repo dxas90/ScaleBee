@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/swarm"
 	"github.com/docker/docker/client"
 )
@@ -43,7 +42,7 @@ func (sm *ServiceManager) Close() error {
 
 // GetServiceConfig retrieves the autoscaling configuration for a service
 func (sm *ServiceManager) GetServiceConfig(ctx context.Context, serviceName string) (*ServiceConfig, error) {
-	service, _, err := sm.client.ServiceInspectWithRaw(ctx, serviceName, types.ServiceInspectOptions{})
+	service, _, err := sm.client.ServiceInspectWithRaw(ctx, serviceName, swarm.ServiceInspectOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to inspect service %s: %w", serviceName, err)
 	}
@@ -86,7 +85,7 @@ func (sm *ServiceManager) GetServiceConfig(ctx context.Context, serviceName stri
 
 // ScaleService scales a service to the specified number of replicas
 func (sm *ServiceManager) ScaleService(ctx context.Context, serviceName string, replicas uint64) error {
-	service, _, err := sm.client.ServiceInspectWithRaw(ctx, serviceName, types.ServiceInspectOptions{})
+	service, _, err := sm.client.ServiceInspectWithRaw(ctx, serviceName, swarm.ServiceInspectOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to inspect service %s: %w", serviceName, err)
 	}
