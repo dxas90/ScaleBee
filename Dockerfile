@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # Multi-platform build optimized with cross-compilation
-FROM --platform=$BUILDPLATFORM golang:1.24-alpine AS builder
+FROM --platform=$BUILDPLATFORM golang:1.25-alpine AS builder
 
 # Build arguments for cross-compilation
 ARG TARGETOS
