@@ -19,7 +19,7 @@ RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build \
     -ldflags="-w -s" \
     -o scalebee .
 
-FROM alpine:3.23 AS production
+FROM alpine:3.20 AS production
 ARG CREATED="0000-00-00T00:00:00Z"
 
 # Install ca-certificates for HTTPS
